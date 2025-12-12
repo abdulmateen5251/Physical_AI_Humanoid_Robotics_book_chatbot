@@ -1,0 +1,824 @@
+openapi: 3.1.0
+info:
+  title: Physical AI Textbook RAG API
+  description: |
+    Backend API for the Physical AI & Humanoid Robotics textbook RAG chatbot.
+    Supports full-book and selection-mode Q&A, user authentication, personalization, and translation.
+  version: 1.0.0
+  contact:
+    name: AbdulMateen Team
+    email: abdulmateen5251@gmial.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://github.com/abdulmateen5251
+    description: Production server
+  - url: http://localhost:8090/v1
+    description: Local development server
+
+tags:
+  - name: RAG
+    description: Retrieval-Augmented Generation endpoints
+  - name: Auth
+    description: Authentication and user management
+  - name: Personalization
+    description: User profile and content personalization
+  - name: Translation
+    description: Content translation (Urdu)
+  - name: Admin
+    description: Administrative endpoints (indexing, validation)
+
+paths:
+  /api/answer:
+    post:
+      tags: [RAG]
+      summary: Answer a question using RAG
+      description: |
+        Generate an answer to a user question using either:
+        - **fullbook mode**: Search entire textbook corpus
+        - **selected_text mode**: Answer strictly from user-selected text
+      operationId: answerQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerRequest'
+            examples:
+              fullbookMode:
+                summary: Full-book Q&A
+                value:
+                  question: "How do I create a publisher in rclpy?"
+                  scope: "fullbook"
+                  user_id: "a7f3c8d2-4e1b-4f9a-8c3d-2e5f6a7b8c9d"
+              selectionMode:
+                summary: Selection-constrained Q&A
+                value:
+                  question: "What is the syntax for create_publisher?"
+                  scope: "selected_text"
+                  selected_text: "To create a publisher in rclpy, use self.create_publisher(MsgType, 'topic_name', 10). The third argument is the QoS depth."
+                  user_id: "a7f3c8d2-4e1b-4f9a-8c3d-2e5f6a7b8c9d"
+      responses:
+        '200':
+          description: Successful answer generation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnswerResponse'
+        '400':
+          description: Invalid request (e.g., missing selected_text in selection mode)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error (question too long, invalid scope)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error (LLM failure, retrieval error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/retrieve:
+    post:
+      tags: [RAG]
+      summary: Retrieve relevant document chunks
+      description: Search Qdrant for top-k relevant chunks (without LLM answer generation)
+      operationId: retrieveChunks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetrieveRequest'
+      responses:
+        '200':
+          description: Retrieved chunks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetrieveResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/feedback:
+    post:
+      tags: [RAG]
+      summary: Submit feedback on an answer
+      description: Rate an answer session (1-5 stars) and optionally provide a comment
+      operationId: submitFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+      responses:
+        '200':
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Feedback recorded successfully"
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/signup:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      description: Create a new user account with email and password
+      operationId: signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input (weak password, invalid email)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/signin:
+    post:
+      tags: [Auth]
+      summary: Sign in with email and password
+      description: Authenticate user and return session token
+      operationId: signin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SigninRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/signout:
+    post:
+      tags: [Auth]
+      summary: Sign out current user
+      description: Invalidate session token
+      operationId: signout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Signed out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Signed out successfully"
+
+  /api/user/{user_id}/profile:
+    get:
+      tags: [Personalization]
+      summary: Get user profile
+      description: Retrieve user profile with personalization preferences
+      operationId: getUserProfile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [Personalization]
+      summary: Update user profile
+      description: Update personalization preferences
+      operationId: updateUserProfile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '403':
+          description: Forbidden (cannot update another user's profile)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/personalize:
+    post:
+      tags: [Personalization]
+      summary: Personalize chapter content
+      description: Rewrite chapter content based on user profile preferences
+      operationId: personalizeContent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonalizeRequest'
+      responses:
+        '200':
+          description: Personalized content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalizeResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/translate:
+    post:
+      tags: [Translation]
+      summary: Translate chapter to Urdu
+      description: Get Urdu translation of a chapter (cached if available)
+      operationId: translateChapter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranslateRequest'
+      responses:
+        '200':
+          description: Translated content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslateResponse'
+        '404':
+          description: Chapter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/index:
+    post:
+      tags: [Admin]
+      summary: Index documents to Qdrant
+      description: Trigger indexing pipeline for textbook content (admin only)
+      operationId: indexDocuments
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexRequest'
+      responses:
+        '202':
+          description: Indexing job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexResponse'
+        '403':
+          description: Forbidden (admin only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/validate:
+    post:
+      tags: [Admin]
+      summary: Validate RAG accuracy
+      description: Run acceptance test suite on indexed content
+      operationId: validateRAG
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Validation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AnswerRequest:
+      type: object
+      required:
+        - question
+        - scope
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: User's question
+          example: "How do I create a publisher in rclpy?"
+        scope:
+          type: string
+          enum: [fullbook, selected_text]
+          description: Search scope
+          example: "fullbook"
+        selected_text:
+          type: string
+          maxLength: 10000
+          description: Selected text (required if scope=selected_text)
+          example: "To create a publisher, use self.create_publisher(MsgType, 'topic', 10)"
+        user_id:
+          type: string
+          format: uuid
+          description: User ID for personalization (optional)
+          example: "a7f3c8d2-4e1b-4f9a-8c3d-2e5f6a7b8c9d"
+
+    AnswerResponse:
+      type: object
+      required:
+        - answer
+        - session_id
+        - sources
+        - response_time_ms
+      properties:
+        answer:
+          type: string
+          description: Generated answer
+          example: "To create a publisher in rclpy, use `self.create_publisher(MsgType, 'topic_name', qos_profile)`. The first argument is the message type, second is the topic name, and third is the QoS profile (or an integer for queue size)."
+        session_id:
+          type: string
+          format: uuid
+          description: Session ID for feedback
+          example: "b8e4d9e3-5f2c-4a0b-9d4e-3f6a8b9c0d1e"
+        sources:
+          type: array
+          description: Retrieved document chunks
+          items:
+            type: object
+            properties:
+              chunk_id:
+                type: string
+                format: uuid
+              chapter:
+                type: string
+              section:
+                type: string
+              url:
+                type: string
+              relevance_score:
+                type: number
+                format: float
+                minimum: 0
+                maximum: 1
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Answer confidence score
+          example: 0.95
+        response_time_ms:
+          type: integer
+          description: Total processing time in milliseconds
+          example: 1250
+
+    RetrieveRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Search query
+          example: "publisher subscriber pattern"
+        top_k:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+          description: Number of chunks to retrieve
+        filters:
+          type: object
+          description: Metadata filters
+          properties:
+            module:
+              type: string
+              example: "module-01-ros2"
+            lang:
+              type: string
+              enum: [en, ur]
+              example: "en"
+            chunk_type:
+              type: string
+              enum: [content, code, exercise]
+
+    RetrieveResponse:
+      type: object
+      required:
+        - chunks
+        - query_time_ms
+      properties:
+        chunks:
+          type: array
+          items:
+            type: object
+            properties:
+              chunk_id:
+                type: string
+                format: uuid
+              content:
+                type: string
+              score:
+                type: number
+                format: float
+              metadata:
+                type: object
+        query_time_ms:
+          type: integer
+          example: 45
+
+    FeedbackRequest:
+      type: object
+      required:
+        - session_id
+        - rating
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        comment:
+          type: string
+          maxLength: 1000
+          example: "Very helpful answer with clear code examples"
+
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+          example: "student@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "SecurePass123!"
+        name:
+          type: string
+          maxLength: 255
+          example: "Ahmed Khan"
+        profile:
+          $ref: '#/components/schemas/UpdateProfileRequest'
+
+    SigninRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      required:
+        - user_id
+        - token
+        - expires_at
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        token:
+          type: string
+          description: JWT bearer token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        expires_at:
+          type: string
+          format: date-time
+          example: "2025-12-07T10:30:00Z"
+        user:
+          $ref: '#/components/schemas/UserProfileResponse'
+
+    UserProfileResponse:
+      type: object
+      required:
+        - user_id
+        - email
+        - name
+        - profile
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        profile:
+          type: object
+          properties:
+            background:
+              type: string
+              enum: [hardware, software, both, beginner]
+            difficulty_level:
+              type: string
+              enum: [beginner, intermediate, advanced]
+            examples_preference:
+              type: string
+              enum: [code-heavy, theory-heavy, balanced]
+            localization:
+              type: string
+              enum: [en, ur]
+            consent_analytics:
+              type: boolean
+            consent_personalization:
+              type: boolean
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        background:
+          type: string
+          enum: [hardware, software, both, beginner]
+          example: "software"
+        difficulty_level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          example: "intermediate"
+        examples_preference:
+          type: string
+          enum: [code-heavy, theory-heavy, balanced]
+          example: "code-heavy"
+        localization:
+          type: string
+          enum: [en, ur]
+          example: "en"
+        consent_analytics:
+          type: boolean
+          example: true
+        consent_personalization:
+          type: boolean
+          example: true
+
+    PersonalizeRequest:
+      type: object
+      required:
+        - chapter_id
+        - user_id
+      properties:
+        chapter_id:
+          type: string
+          example: "module-01-ros2/02-nodes-topics-services"
+        user_id:
+          type: string
+          format: uuid
+        force_refresh:
+          type: boolean
+          default: false
+          description: Ignore cache
+
+    PersonalizeResponse:
+      type: object
+      required:
+        - chapter_id
+        - personalized_content
+        - cached
+      properties:
+        chapter_id:
+          type: string
+        personalized_content:
+          type: string
+          description: Markdown content personalized for user
+        cached:
+          type: boolean
+          description: Whether result was from cache
+        personalization_time_ms:
+          type: integer
+
+    TranslateRequest:
+      type: object
+      required:
+        - chapter_id
+      properties:
+        chapter_id:
+          type: string
+          example: "module-01-ros2/02-nodes-topics-services"
+        target_lang:
+          type: string
+          enum: [ur]
+          default: "ur"
+        force_refresh:
+          type: boolean
+          default: false
+
+    TranslateResponse:
+      type: object
+      required:
+        - chapter_id
+        - translated_content
+        - cached
+      properties:
+        chapter_id:
+          type: string
+        translated_content:
+          type: string
+          description: Translated markdown content
+        quality_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Translation quality (BLEU score)
+        cached:
+          type: boolean
+        translation_time_ms:
+          type: integer
+
+    IndexRequest:
+      type: object
+      required:
+        - docs_path
+      properties:
+        docs_path:
+          type: string
+          example: "./frontend/docs"
+        collection_name:
+          type: string
+          default: "physical_ai_humanoid_robotics_course"
+        force_reindex:
+          type: boolean
+          default: false
+
+    IndexResponse:
+      type: object
+      required:
+        - job_id
+        - status
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+        total_files:
+          type: integer
+        chunks_created:
+          type: integer
+        estimated_time_seconds:
+          type: integer
+
+    ValidationResponse:
+      type: object
+      required:
+        - total_tests
+        - passed
+        - failed
+        - accuracy
+      properties:
+        total_tests:
+          type: integer
+          example: 200
+        passed:
+          type: integer
+          example: 185
+        failed:
+          type: integer
+          example: 15
+        accuracy:
+          type: number
+          format: float
+          example: 0.925
+        failures:
+          type: array
+          items:
+            type: object
+            properties:
+              test_id:
+                type: string
+              question:
+                type: string
+              expected:
+                type: string
+              actual:
+                type: string
+              error_type:
+                type: string
+                enum: [hallucination, missing_info, incorrect_fact]
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: "ValidationError"
+        message:
+          type: string
+          example: "selected_text required when scope is 'selected_text'"
+        details:
+          type: object
+          additionalProperties: true

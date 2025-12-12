@@ -1,0 +1,15 @@
+{
+  "date": "2025-12-09",
+  "actions": [
+    {
+      "command": "/speckit.specify",
+      "description": "Functional spec for embedded book RAG chatbot with selection-only support",
+      "outputs": [
+        "history/prompts/001-ai-textbook-rag-chatbot/PHR-006-rag-chatbot-specify.prompt.md",
+        ".specify/memory/prompts/system.md",
+        ".specify/memory/prompts/assistant.md",
+        ".specify/memory/prompts/user_templates.md"
+      ]
+    }
+  ]
+}
