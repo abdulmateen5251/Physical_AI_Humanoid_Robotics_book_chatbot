@@ -55,3 +55,63 @@ Scope: Embed a RAG chatbot in a published book using OpenAI Agents/ChatKit, Fast
 - Validate selections; return “insufficient evidence” when needed.
 - Graceful degradation on Qdrant/Neon outages; minimal data retention for privacy.
 - Keep latency reasonable via chunk sizing and top-k tuning.
+
+
+
+# GitHub Copilot Instructions for PDCP
+
+Mission:
+- Assist in implementing a spec-driven, privacy-first personalized content platform using Better Auth.
+- Always align output with spec.md and update docs as behavior changes.
+
+Coding Standards:
+- Language: TypeScript preferred for web and API layers.
+- Framework: Next.js (or similar) with API routes; Node.js runtime.
+- Style: ESLint + Prettier enforced in CI.
+- Testing: Vitest/Jest + Playwright where e2e makes sense. Aim for meaningful coverage around auth, profile, and recommendations.
+- Security: Use parameterized queries, validate input with zod or similar, sanitize outputs.
+
+Project Structure (suggested):
+- /app or /src/app — routes and pages
+- /src/components — presentational components
+- /src/modules/auth — Better Auth integration
+- /src/modules/profile — profile models, API
+- /src/modules/content — content models, admin UI
+- /src/modules/recs — recommendation engine
+- /src/lib — shared utils (validation, logging, feature flags)
+- /prisma or /db — schema and migrations
+- /tests — unit/integration/e2e
+
+Working Agreement:
+- Before coding new features, read spec.md and identify FRs and acceptance criteria.
+- If spec gaps exist, generate a “Spec Clarification” draft in a PR and propose options.
+- When you generate code that changes behavior, draft updates to spec.md/plan.md/tasks.md.
+
+PR Guidelines:
+- Branch naming: feature/<area>-<short-desc>, fix/<area>-<short-desc>, docs/<area>-<short-desc>
+- PR description:
+  - What and Why (link FR-#)
+  - How (approach and tradeoffs)
+  - Tests (what’s covered)
+  - Docs (what updated)
+- No secrets in code. Use environment variables and secret stores.
+
+Better Auth Integration:
+- Create an auth module with:
+  - Client: signup/signin/signout flows
+  - Server: callback handlers, middleware/guards
+  - Session management and CSRF protections
+- Log only non-sensitive metadata for debugging.
+
+Signup Questionnaire:
+- Build accessible forms (labels, roles, keyboard support).
+- Store minimal PII; encrypt sensitive profile fields.
+- Implement feature flags to roll out gradually.
+
+Observability:
+- Emit events defined in spec.md with a shared schema util.
+- Ensure opt-out is respected in analytics calls.
+
+When in doubt:
+- Prefer small, incremental PRs.
+- Ask for spec clarification rather than guessing.

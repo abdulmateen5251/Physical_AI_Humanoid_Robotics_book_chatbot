@@ -1,0 +1,154 @@
+// Prisma Schema for PDCP (Personalized Developer Content Platform)
+// Database: PostgreSQL 15+
+// ORM: Prisma 5.x
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// User Authentication (Better Auth Integration)
+// ============================================================================
+
+model User {
+  id              String            @id @default(uuid())
+  email           String            @unique
+  passwordHash    String?
+  emailVerified   DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  // Relationships
+  profile         DeveloperProfile?
+  analyticsEvents AnalyticsEvent[]
+
+  @@map("users")
+}
+
+// ============================================================================
+// Developer Profile & Personalization
+// ============================================================================
+
+model DeveloperProfile {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  
+  // Technical Context (JSON for flexibility)
+  // softwareStack: { languages: string[], frameworks: string[], tools: string[] }
+  softwareStack         String
+  
+  // hardwareEnvironment: { os: string, deviceType: string, gpuAvailable: boolean }
+  hardwareEnvironment   String
+  
+  // learningGoals: { skillLevel: string, interests: string[], projectTypes: string[] }
+  learningGoals         String
+  
+  // Privacy Preferences
+  personalizationOptIn  Boolean  @default(true)
+  analyticsOptIn        Boolean  @default(false)
+  
+  // Metadata
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relationships
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendationScores  RecommendationScore[]
+
+  @@map("developer_profiles")
+  @@index([userId])
+}
+
+// ============================================================================
+// Content Catalog
+// ============================================================================
+
+model ContentItem {
+  id                   String   @id @default(uuid())
+  title                String
+  description          String
+  contentUrl           String
+  
+  // tags: { technologies: string[], difficulty: string, category: string }
+  tags                 String
+  
+  // Metadata
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  // Relationships
+  recommendationScores RecommendationScore[]
+
+  @@map("content_items")
+  @@index([createdAt])
+}
+
+// ============================================================================
+// Starter Templates
+// ============================================================================
+
+model StarterTemplate {
+  id                    String   @id @default(uuid())
+  name                  String
+  description           String
+  
+  // supportedTechnologies: { languages: string[], frameworks: string[], os: string[] }
+  supportedTechnologies String
+  
+  templateFiles         String
+  
+  // Metadata
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("starter_templates")
+  @@index([createdAt])
+}
+
+// ============================================================================
+// Recommendation Engine
+// ============================================================================
+
+model RecommendationScore {
+  id         String            @id @default(uuid())
+  profileId  String
+  contentId  String
+  score      Float
+  computedAt DateTime          @default(now())
+  
+  // Relationships
+  profile    DeveloperProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  content    ContentItem       @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  
+  @@unique([profileId, contentId])
+  @@index([profileId, score(sort: Desc)])
+  @@map("recommendation_scores")
+}
+
+// ============================================================================
+// Analytics & Observability
+// ============================================================================
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  eventType String
+  
+  // eventData: Event-specific JSON payload
+  eventData String?
+  
+  timestamp DateTime @default(now())
+  optedIn   Boolean
+  
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("analytics_events")
+  @@index([userId, timestamp])
+  @@index([eventType, timestamp])
+}

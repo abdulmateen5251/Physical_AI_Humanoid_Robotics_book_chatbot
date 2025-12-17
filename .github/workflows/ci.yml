@@ -1,0 +1,114 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop, 'feat/*']
+  push:
+    branches: [main, develop]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Lint Backend
+        working-directory: ./backend
+        run: npm run lint
+      
+      - name: Type Check Backend
+        working-directory: ./backend
+        run: npx tsc --noEmit
+  
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pdcp_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run Prisma Migrations
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pdcp_test
+        run: |
+          npx prisma migrate deploy
+          npx prisma generate
+      
+      - name: Run Backend Tests
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pdcp_test
+          REDIS_URL: redis://localhost:6379
+          AUTH_SECRET: test-secret-key-for-ci-only-32chars
+        run: npm test
+
+  doc-sync:
+    name: Documentation Sync Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check Spec-Plan-Tasks Sync
+        run: |
+          # Verify all spec features have corresponding plan and tasks
+          for spec in specs/*/spec.md; do
+            dir=$(dirname "$spec")
+            if [ ! -f "$dir/plan.md" ]; then
+              echo "ERROR: Missing plan.md for $spec"
+              exit 1
+            fi
+            if [ ! -f "$dir/tasks.md" ]; then
+              echo "ERROR: Missing tasks.md for $spec"
+              exit 1
+            fi
+          done
+          echo "✅ All specifications have corresponding plan and tasks"

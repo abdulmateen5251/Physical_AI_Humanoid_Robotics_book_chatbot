@@ -1,0 +1,360 @@
+openapi: 3.0.3
+info:
+  title: PDCP Developer Profiles API
+  description: Manage developer profiles, questionnaires, and privacy preferences
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development
+  - url: https://api.pdcp.dev
+    description: Production
+
+paths:
+  /profile:
+    get:
+      summary: Get current user's profile
+      description: Retrieve developer profile for authenticated user
+      operationId: getProfile
+      tags:
+        - Profiles
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeveloperProfile'
+        '404':
+          description: Profile not found (user hasn't completed questionnaire)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create developer profile
+      description: Create profile from signup questionnaire responses
+      operationId: createProfile
+      tags:
+        - Profiles
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileInput'
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeveloperProfile'
+        '400':
+          description: Invalid input (validation errors)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Profile already exists for this user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      summary: Update developer profile
+      description: Update existing profile attributes and privacy preferences
+      operationId: updateProfile
+      tags:
+        - Profiles
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateInput'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeveloperProfile'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/export:
+    get:
+      summary: Export profile data
+      description: Download all profile data in JSON format (data portability)
+      operationId: exportProfile
+      tags:
+        - Profiles
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Profile data exported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileExport'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/delete:
+    delete:
+      summary: Request profile deletion
+      description: Request deletion of profile data (30-day fulfillment per constitution)
+      operationId: deleteProfile
+      tags:
+        - Profiles
+      security:
+        - SessionCookie: []
+      responses:
+        '202':
+          description: Deletion request accepted (processed within 30 days)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Profile deletion request submitted. Data will be removed within 30 days.
+                  requestId:
+                    type: string
+                    format: uuid
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    DeveloperProfile:
+      type: object
+      required:
+        - id
+        - userId
+        - softwareStack
+        - hardwareEnvironment
+        - learningGoals
+        - personalizationOptIn
+        - analyticsOptIn
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        softwareStack:
+          $ref: '#/components/schemas/SoftwareStack'
+        hardwareEnvironment:
+          $ref: '#/components/schemas/HardwareEnvironment'
+        learningGoals:
+          $ref: '#/components/schemas/LearningGoals'
+        personalizationOptIn:
+          type: boolean
+          description: User consent for personalized recommendations
+          example: true
+        analyticsOptIn:
+          type: boolean
+          description: User consent for analytics tracking
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SoftwareStack:
+      type: object
+      required:
+        - languages
+      properties:
+        languages:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          example: ["Python", "TypeScript", "Rust"]
+        frameworks:
+          type: array
+          items:
+            type: string
+          example: ["React", "FastAPI", "Django"]
+        tools:
+          type: array
+          items:
+            type: string
+          example: ["Docker", "Git", "VSCode"]
+
+    HardwareEnvironment:
+      type: object
+      required:
+        - os
+        - deviceType
+      properties:
+        os:
+          type: string
+          enum: [Windows, macOS, Linux, Other]
+          example: Linux
+        deviceType:
+          type: string
+          enum: [desktop, laptop, tablet, mobile]
+          example: laptop
+        gpuAvailable:
+          type: boolean
+          example: true
+
+    LearningGoals:
+      type: object
+      required:
+        - skillLevel
+      properties:
+        skillLevel:
+          type: string
+          enum: [beginner, intermediate, advanced, expert]
+          example: intermediate
+        interests:
+          type: array
+          items:
+            type: string
+          example: ["machine-learning", "web-development", "devops"]
+        projectTypes:
+          type: array
+          items:
+            type: string
+          example: ["personal", "open-source", "freelance"]
+
+    ProfileInput:
+      type: object
+      required:
+        - softwareStack
+        - hardwareEnvironment
+        - learningGoals
+      properties:
+        softwareStack:
+          $ref: '#/components/schemas/SoftwareStack'
+        hardwareEnvironment:
+          $ref: '#/components/schemas/HardwareEnvironment'
+        learningGoals:
+          $ref: '#/components/schemas/LearningGoals'
+        personalizationOptIn:
+          type: boolean
+          default: true
+        analyticsOptIn:
+          type: boolean
+          default: false
+
+    ProfileUpdateInput:
+      type: object
+      properties:
+        softwareStack:
+          $ref: '#/components/schemas/SoftwareStack'
+        hardwareEnvironment:
+          $ref: '#/components/schemas/HardwareEnvironment'
+        learningGoals:
+          $ref: '#/components/schemas/LearningGoals'
+        personalizationOptIn:
+          type: boolean
+        analyticsOptIn:
+          type: boolean
+
+    ProfileExport:
+      type: object
+      properties:
+        profile:
+          $ref: '#/components/schemas/DeveloperProfile'
+        analyticsEvents:
+          type: array
+          items:
+            type: object
+            properties:
+              eventType:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+        exportedAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object

@@ -1,0 +1,382 @@
+openapi: 3.0.3
+info:
+  title: PDCP Content & Recommendations API
+  description: Content discovery, personalized recommendations, and starter templates
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development
+  - url: https://api.pdcp.dev
+    description: Production
+
+paths:
+  /content:
+    get:
+      summary: List content items
+      description: Retrieve paginated list of content with optional filtering
+      operationId: listContent
+      tags:
+        - Content
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced, expert]
+      responses:
+        '200':
+          description: Content list retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentList'
+
+  /recommendations:
+    get:
+      summary: Get personalized recommendations
+      description: Retrieve content recommendations based on user profile
+      operationId: getRecommendations
+      tags:
+        - Recommendations
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Recommendations retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationList'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Profile not found (user hasn't completed questionnaire)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /templates:
+    get:
+      summary: List starter templates
+      description: Retrieve templates filtered by user profile (if authenticated)
+      operationId: listTemplates
+      tags:
+        - Templates
+      security:
+        - SessionCookie: []
+        - {} # Allow unauthenticated access (generic list)
+      parameters:
+        - name: language
+          in: query
+          schema:
+            type: string
+        - name: framework
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Templates retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateList'
+
+  /templates/{id}/download:
+    get:
+      summary: Download template files
+      description: Get download URL or ZIP file for template
+      operationId: downloadTemplate
+      tags:
+        - Templates
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Template download initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  downloadUrl:
+                    type: string
+                    format: uri
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /recommendations/feedback:
+    post:
+      summary: Submit recommendation feedback
+      description: Record user feedback on recommendation quality
+      operationId: submitFeedback
+      tags:
+        - Recommendations
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - contentId
+                - helpful
+              properties:
+                contentId:
+                  type: string
+                  format: uuid
+                helpful:
+                  type: boolean
+                  description: Whether the recommendation was helpful
+                comments:
+                  type: string
+                  maxLength: 500
+      responses:
+        '201':
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    ContentItem:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - contentUrl
+        - tags
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 10
+          maxLength: 200
+        description:
+          type: string
+          minLength: 50
+          maxLength: 1000
+        contentUrl:
+          type: string
+          format: uri
+        tags:
+          type: object
+          properties:
+            technologies:
+              type: array
+              items:
+                type: string
+              example: ["Python", "Django", "PostgreSQL"]
+            difficulty:
+              type: string
+              enum: [beginner, intermediate, advanced, expert]
+            category:
+              type: string
+              example: web-development
+        createdAt:
+          type: string
+          format: date-time
+
+    ContentList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentItem'
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            totalItems:
+              type: integer
+            totalPages:
+              type: integer
+
+    Recommendation:
+      type: object
+      required:
+        - content
+        - score
+        - reason
+      properties:
+        content:
+          $ref: '#/components/schemas/ContentItem'
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.85
+        reason:
+          type: string
+          description: Explanation for why this content was recommended
+          example: Matches your Python and machine learning interests
+        rank:
+          type: integer
+          description: Position in recommendation list (1-indexed)
+          example: 1
+
+    RecommendationList:
+      type: object
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recommendation'
+        generatedAt:
+          type: string
+          format: date-time
+        profileSnapshot:
+          type: object
+          description: Snapshot of profile used for recommendations (for "Why this?" explanation)
+          properties:
+            languages:
+              type: array
+              items:
+                type: string
+            skillLevel:
+              type: string
+
+    StarterTemplate:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - supportedTechnologies
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        supportedTechnologies:
+          type: object
+          properties:
+            languages:
+              type: array
+              items:
+                type: string
+            frameworks:
+              type: array
+              items:
+                type: string
+            os:
+              type: array
+              items:
+                type: string
+        matchScore:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Relevance to user profile (only present for authenticated users)
+          example: 0.92
+
+    TemplateList:
+      type: object
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/StarterTemplate'
+        personalized:
+          type: boolean
+          description: Whether results are personalized (true for authenticated users with profiles)
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string

@@ -1,0 +1,13 @@
+* @maintainers
+
+# Specifications require maintainer review
+/specs/ @maintainers
+/.specify/ @maintainers
+
+# Source code directories
+/backend/src/ @backend-team @maintainers
+/frontend/src/ @frontend-team @maintainers
+
+# Critical infrastructure files
+/.github/workflows/ @maintainers
+/backend/prisma/ @backend-team @maintainers
