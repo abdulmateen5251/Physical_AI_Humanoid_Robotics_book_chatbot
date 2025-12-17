@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
+  "installCommand": "npm install",
+  "framework": null,
+  "devCommand": "npm start",
+  "github": {
+    "silent": true
+  }
+}
