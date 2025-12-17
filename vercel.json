@@ -1,10 +1,7 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "build",
+  "outputDirectory": "frontend/build",
   "installCommand": "npm install",
   "framework": null,
-  "devCommand": "npm start",
-  "github": {
-    "silent": true
-  }
+  "devCommand": "npm start"
 }
