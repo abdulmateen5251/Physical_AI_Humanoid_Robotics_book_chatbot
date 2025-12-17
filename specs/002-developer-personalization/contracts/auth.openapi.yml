@@ -1,0 +1,292 @@
+openapi: 3.0.3
+info:
+  title: PDCP Authentication API
+  description: Better Auth integration for signup, signin, and session management
+  version: 1.0.0
+  contact:
+    name: PDCP Team
+
+servers:
+  - url: http://localhost:3000/api/auth
+    description: Local development
+  - url: https://api.pdcp.dev/auth
+    description: Production
+
+paths:
+  /signup:
+    post:
+      summary: Register a new user
+      description: Create a new user account with email and password
+      operationId: signup
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: developer@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: SecurePass123!
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input (email format, password strength)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /signin:
+    post:
+      summary: Sign in with email and password
+      description: Authenticate user and create session
+      operationId: signin
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /signout:
+    post:
+      summary: Sign out current user
+      description: Invalidate session and clear cookies
+      operationId: signout
+      tags:
+        - Authentication
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Signed out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /session:
+    get:
+      summary: Get current session
+      description: Retrieve current user session and profile information
+      operationId: getSession
+      tags:
+        - Authentication
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Session retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /oauth/{provider}:
+    get:
+      summary: Initiate OAuth flow
+      description: Redirect to OAuth provider (GitHub, Google)
+      operationId: oauthInit
+      tags:
+        - Authentication
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [github, google]
+      responses:
+        '302':
+          description: Redirect to OAuth provider
+        '400':
+          description: Invalid provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /oauth/{provider}/callback:
+    get:
+      summary: OAuth callback handler
+      description: Handle OAuth provider callback and create session
+      operationId: oauthCallback
+      tags:
+        - Authentication
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [github, google]
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to application with session cookie
+        '400':
+          description: Invalid callback parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: HTTP-only session cookie set by Better Auth
+
+  schemas:
+    AuthResponse:
+      type: object
+      required:
+        - user
+        - session
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        session:
+          $ref: '#/components/schemas/SessionInfo'
+
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        email:
+          type: string
+          format: email
+          example: developer@example.com
+        emailVerified:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SessionInfo:
+      type: object
+      required:
+        - id
+        - expiresAt
+      properties:
+        id:
+          type: string
+          example: sess_abc123
+        expiresAt:
+          type: string
+          format: date-time
+
+    Session:
+      type: object
+      required:
+        - user
+        - authenticated
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        authenticated:
+          type: boolean
+          example: true
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: ValidationError
+        message:
+          type: string
+          example: Invalid email format
+        details:
+          type: object
+          additionalProperties: true

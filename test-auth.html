@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+</head>
+<body>
+    <h1>Authentication Test</h1>
+    
+    <h2>Signup</h2>
+    <input type="email" id="signupEmail" placeholder="Email" value="test@example.com">
+    <input type="password" id="signupPassword" placeholder="Password" value="test12345">
+    <button onclick="testSignup()">Test Signup</button>
+    
+    <h2>Signin</h2>
+    <input type="email" id="signinEmail" placeholder="Email" value="test@example.com">
+    <input type="password" id="signinPassword" placeholder="Password" value="test12345">
+    <button onclick="testSignin()">Test Signin</button>
+    
+    <h2>Results</h2>
+    <pre id="results"></pre>
+    
+    <script>
+        async function testSignup() {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                document.getElementById('results').textContent = 
+                    `Signup Status: ${response.status}\n` +
+                    JSON.stringify(data, null, 2);
+                    
+                if (data.token) {
+                    localStorage.setItem('auth_token', data.token);
+                }
+            } catch (error) {
+                document.getElementById('results').textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        async function testSignin() {
+            const email = document.getElementById('signinEmail').value;
+            const password = document.getElementById('signinPassword').value;
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/auth/signin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                document.getElementById('results').textContent = 
+                    `Signin Status: ${response.status}\n` +
+                    JSON.stringify(data, null, 2);
+                    
+                if (data.token) {
+                    localStorage.setItem('auth_token', data.token);
+                }
+            } catch (error) {
+                document.getElementById('results').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

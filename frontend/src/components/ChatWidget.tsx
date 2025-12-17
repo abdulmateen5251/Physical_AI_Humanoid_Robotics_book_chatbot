@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useAuth } from './AuthContext';
+import AuthModal from './AuthModal';
+import ProtectedContent from './ProtectedContent';
 import './ChatWidget.css';
 
 interface SelectionData {
@@ -22,6 +25,7 @@ interface ChatMessage {
 }
 
 const ChatWidget: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,6 +36,7 @@ const ChatWidget: React.FC = () => {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   });
   const [isVisible, setIsVisible] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Capture text selection
   useEffect(() => {
@@ -58,7 +63,7 @@ const ChatWidget: React.FC = () => {
   }, []);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !isAuthenticated) return;
 
     // Save input before clearing
     const question = input;
@@ -129,6 +134,12 @@ const ChatWidget: React.FC = () => {
 
   return (
     <div>
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => setShowAuthModal(false)}
+      />
+
       {!isVisible && (
         <button className="chat-floating-button" onClick={() => setIsVisible(true)}>
           💬
@@ -146,7 +157,7 @@ const ChatWidget: React.FC = () => {
                 </button>
               </div>
             </div>
-            {selection && (
+            {selection && isAuthenticated && (
               <div className="chat-selection-info">
                 <label className="chat-checkbox-label">
                   <input
@@ -163,48 +174,51 @@ const ChatWidget: React.FC = () => {
             )}
           </div>
 
-      <div className="chat-messages">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={msg.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'}>
-            <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong>
-            <div className="chat-markdown chat-message-content">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {msg.content}
-              </ReactMarkdown>
+          <ProtectedContent onLoginRequired={() => setShowAuthModal(true)}>
+            <div className="chat-messages">
+              {messages.map((msg, idx) => (
+                <div key={idx} className={msg.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'}>
+                  <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong>
+                  <div className="chat-markdown chat-message-content">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                  {msg.citations && msg.citations.length > 0 && (
+                    <div className="chat-citations">
+                      <strong>Sources:</strong>
+                      <ul>
+                        {msg.citations.map((c, i) => (
+                          <li key={i}>
+                            {c.chapter && `Chapter: ${c.chapter}`}
+                            {c.section && `, Section: ${c.section}`}
+                            {c.page && `, Page: ${c.page}`}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {loading && <div className="chat-loading">Thinking...</div>}
             </div>
-            {msg.citations && msg.citations.length > 0 && (
-              <div className="chat-citations">
-                <strong>Sources:</strong>
-                <ul>
-                  {msg.citations.map((c, i) => (
-                    <li key={i}>
-                      {c.chapter && `Chapter: ${c.chapter}`}
-                      {c.section && `, Section: ${c.section}`}
-                      {c.page && `, Page: ${c.page}`}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ))}
-        {loading && <div className="chat-loading">Thinking...</div>}
-      </div>
 
-      <div className="chat-input-container">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-          placeholder="Ask a question about the book..."
-          className="chat-input"
-        />
-        <button onClick={sendMessage} disabled={loading} className="chat-button">
-          Send
-        </button>
-      </div>
-    </div>
+            <div className="chat-input-container">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                placeholder="Ask a question about the book..."
+                className="chat-input"
+                disabled={!isAuthenticated}
+              />
+              <button onClick={sendMessage} disabled={loading || !isAuthenticated} className="chat-button">
+                Send
+              </button>
+            </div>
+          </ProtectedContent>
+        </div>
       )}
     </div>
   );

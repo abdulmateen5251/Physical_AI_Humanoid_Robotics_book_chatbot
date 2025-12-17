@@ -1,0 +1,83 @@
+name: Documentation Sync Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'specs/**'
+      - '.specify/**'
+
+jobs:
+  doc-sync:
+    name: Verify Spec-Plan-Tasks Sync
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for orphaned specs
+        run: |
+          EXIT_CODE=0
+          
+          echo "=== Checking Spec-Plan-Tasks Synchronization ==="
+          
+          for spec in specs/*/spec.md; do
+            if [ ! -f "$spec" ]; then
+              continue
+            fi
+            
+            dir=$(dirname "$spec")
+            feature=$(basename "$dir")
+            
+            echo ""
+            echo "Checking feature: $feature"
+            echo "  Spec: $spec"
+            
+            # Check for plan.md
+            if [ -f "$dir/plan.md" ]; then
+              echo "  ✅ plan.md exists"
+            else
+              echo "  ❌ ERROR: Missing plan.md"
+              EXIT_CODE=1
+            fi
+            
+            # Check for tasks.md
+            if [ -f "$dir/tasks.md" ]; then
+              echo "  ✅ tasks.md exists"
+            else
+              echo "  ❌ ERROR: Missing tasks.md"
+              EXIT_CODE=1
+            fi
+            
+            # Check for data-model.md (optional but recommended)
+            if [ -f "$dir/data-model.md" ]; then
+              echo "  ✅ data-model.md exists"
+            else
+              echo "  ℹ️  INFO: data-model.md not found (optional)"
+            fi
+            
+            # Check for contracts/ (optional)
+            if [ -d "$dir/contracts" ]; then
+              echo "  ✅ contracts/ directory exists"
+            else
+              echo "  ℹ️  INFO: contracts/ not found (optional)"
+            fi
+          done
+          
+          echo ""
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ All specifications have required documentation"
+          else
+            echo "❌ Documentation sync check failed"
+          fi
+          
+          exit $EXIT_CODE
+      
+      - name: Check constitution compliance
+        run: |
+          if [ -f ".specify/scripts/check-constitution.sh" ]; then
+            chmod +x .specify/scripts/check-constitution.sh
+            .specify/scripts/check-constitution.sh || echo "⚠️  Constitution check warnings (non-blocking)"
+          else
+            echo "ℹ️  Constitution check script not found (skipping)"
+          fi
