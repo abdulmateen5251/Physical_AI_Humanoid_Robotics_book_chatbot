@@ -28,7 +28,7 @@ This guide will help you set up and run the **Docusaurus documentation site** lo
 
 ```bash
 # Via HTTPS
-git clone https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book.git
+git clone https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot.git
 
 # Or via SSH (if you have SSH keys configured)
 git clone git@github.com:abdulmateen5251/Physical_AI_Humanoid_Robotics_book.git
@@ -512,9 +512,9 @@ LOG_LEVEL=INFO
 - [Markdown Guide](https://www.markdownguide.org/)
 - [React Documentation](https://react.dev/)
 
-### Community
-- Open an [GitHub Issue](https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book/issues)
-- Check [GitHub Discussions](https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book/discussions)
+### Communit
+- Open an [GitHub Issue]https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot(/issues)
+- Check [GitHub Discussions](https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot/discussions)
 - Email: abdulmateen5251@gmail.com
 
 ---

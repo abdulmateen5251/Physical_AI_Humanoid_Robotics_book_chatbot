@@ -724,7 +724,7 @@ npm start
 
 1. **Clone and Setup**:
    ```bash
-   git clone https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book
+   git clone https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot
    cd Physical_AI_Humanoid_Robotics_book
    
    # Copy environment variables
@@ -816,7 +816,7 @@ DATABASE_URL=postgresql://...  # For production
 
 ## 📞 Contact & Support
 
-**Project Repository**: https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book
+**Project Repository**: https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot
 
 **Project Status**: ✅ **Production Ready** (Full-Stack RAG System)
 
@@ -892,7 +892,7 @@ This project has successfully evolved into a **production-ready, full-stack AI-p
 ### Quick Start
 ```bash
 # Clone repository
-git clone https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book
+git clonehttps://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot
 
 # Start services
 docker compose up -d --build

@@ -48,7 +48,7 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book',
+            'https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot',
           routeBasePath: 'docs',
           showLastUpdateAuthor: false,
           showLastUpdateTime: false,
@@ -80,7 +80,7 @@ const config = {
             label: 'Course Content',
           },
           {
-            href: 'https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book',
+            href: 'https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot',
             label: 'GitHub',
             position: 'right',
           },
@@ -116,7 +116,7 @@ const config = {
             items: [
               {
                 label: 'GitHub',
-                href: 'https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book',
+                href: 'https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot',
               },
               {
                 label: 'Linkedin',

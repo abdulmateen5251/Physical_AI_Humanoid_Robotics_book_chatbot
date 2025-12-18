@@ -38,7 +38,7 @@ A comprehensive learning platform with **20+ chapters** covering 4 robotics modu
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book.git
+git clone https://github.com/abdulmateen5251/Physical_AI_Humanoid_Robotics_book_chatbot.git
 cd Physical_AI_Humanoid_Robotics_book
 
 # 2. Configure environment

@@ -30,6 +30,17 @@
   animation: slideUp 0.3s ease-out;
 }
 
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .auth-modal {
+    width: 95%;
+    max-width: 100%;
+    margin: 0 10px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
 @keyframes slideUp {
   from {
     transform: translateY(20px);
@@ -54,6 +65,35 @@
   font-size: 24px;
   font-weight: 600;
   color: #111827;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .auth-modal-header {
+    padding: 16px 16px 12px;
+  }
+  
+  .auth-modal-header h2 {
+    font-size: 20px;
+  }
+  
+  .auth-form {
+    padding: 16px;
+  }
+  
+  .auth-form-group input {
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+  
+  .auth-password-wrapper input {
+    padding-right: 48px;
+  }
+  
+  .auth-submit-button {
+    padding: 14px;
+    font-size: 16px;
+  }
 }
 
 .auth-modal-close {

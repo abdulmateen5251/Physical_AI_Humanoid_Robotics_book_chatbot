@@ -35,7 +35,7 @@ const ChatWidget: React.FC = () => {
     // Generate unique session ID
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   });
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Capture text selection
@@ -200,7 +200,16 @@ const ChatWidget: React.FC = () => {
                   )}
                 </div>
               ))}
-              {loading && <div className="chat-loading">Thinking...</div>}
+              {loading && (
+                <div className="chat-loading">
+                  <div className="chat-loading-dots">
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="chat-input-container">
